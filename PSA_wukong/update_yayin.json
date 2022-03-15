@@ -1,0 +1,7 @@
+{
+    "name": "updateyayin",
+    "Image": "10.81.138.201:5000/smore_core:v2.0.2.cu10",
+    "Command": "cd /data/home/jiachen/data/seg_data/hebi;~/miniconda3/envs/py3/bin/python update_yayin.py",
+    "GPU": 0,
+    "DEBUG": false
+}
