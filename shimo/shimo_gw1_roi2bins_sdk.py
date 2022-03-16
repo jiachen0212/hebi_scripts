@@ -89,11 +89,12 @@ def sdk_post(predict, Confidence=0.5, Threshold=[0, 0, 0, 0], Max_Threshold=[100
 if __name__ == "__main__":
 
     root_path = '/Users/chenjia/Downloads/Learning/SmartMore/2022/DL/hebi_反面/model_gw1/gw1_roi_cut_2bins'
-    onnx_path = os.path.join(root_path, '3000.onnx')
+    onnx_path = os.path.join(root_path, '100.onnx')
     onnx_session = ort.InferenceSession(onnx_path)
 
     # 输入模型的尺寸, 模型的mean和std
-    size = [2048, 2048]
+    # size = [2048, 2048]
+    size = [2531, 54450]    # 和集群的input_size反着来就可以了.
     mean_ = [123.675, 116.28, 103.53]
     std_ = [58.395, 57.12, 57.375]
 
@@ -109,7 +110,6 @@ if __name__ == "__main__":
     # roi边界冗余
     roi = [0, 918, 7594, 7594]
 
-
     for test_path in test_paths:
 
         im_name = os.path.basename(test_path)
@@ -124,7 +124,9 @@ if __name__ == "__main__":
         img = tmp[roi[0]:roi[2], roi[1]:roi[3]]
         h, w = img.shape[0], img.shape[1]
 
-        img_upper = img[:h//2, :]
+        img_upper = img[:h//2, :]  # shape: 3797, 6676 cv2的hw. 和集群的resize是反着的.
+        # cv2.imshow('1', img_upper)
+        # cv2.waitKey(5000)
         img_lower = img[h//2:, :]
 
         roi_img_res = np.zeros((h, w, 3), dtype=np.uint8)
