@@ -23,6 +23,11 @@ train = open('./train.txt', 'w')
 test = open('./test.txt', 'w')
 
 data_dir = '/data/home/jiachen/project/seg_project/seg_2022/hebi/shimo_project/gw1'
+info = dict()
+info["data_dir"] = data_dir
+info["categories"] = dict()
+
+
 defects = ['aokeng', 'tudian', 'yayin']
 defect_list = [[] for i in range(3)]
 lines = [[] for i in range(3)]
@@ -40,10 +45,17 @@ for ind, defect_js_im in enumerate(defect_list):
             lines[ind].append(line)
 
 
-for defect_lines in lines:
+for ind, defect_lines in enumerate(lines):
     random.shuffle(defect_lines)
+    info["categories"][defects[ind]] = len(defect_lines)
     tr_lens = int(len(defect_lines)*0.7)
     for tr in defect_lines[:tr_lens]:
         train.write(tr)
     for te in defect_lines[tr_lens:]:
         test.write(te)
+
+with open('./info.json', 'w') as f:
+    json.dump(info, f, indent=4)
+
+
+

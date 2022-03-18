@@ -261,9 +261,6 @@ def check_first_sub_img(out_dir):
 
 def help(source_path, roi, split_target, out_dir):
 
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
     # roi = (918,0,7594, 7594)  # 横,纵 起终点.
     # split_target = (1, 2)
     split_img_dir(source_path,split_target,out_dir,roi)

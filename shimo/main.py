@@ -5,9 +5,13 @@ import random
 
 
 
-base_dir = '/data/home/jiachen/project/seg_project/seg_2022/hebi/shimo_project/gw1'
+# base_dir = '/data/home/jiachen/project/seg_project/seg_2022/hebi/shimo_project/gw1'
+base_dir = '/data/home/jiachen/data/seg_data/hebi/shimo/Q1'
 def_list = ['aokeng', 'tudian', 'yayin']
-debug_2bins = '/data/home/jiachen/project/seg_project/seg_2022/hebi/shimo_project/gw1/debug_2bins'
+
+# debug_2bins = '/data/home/jiachen/project/seg_project/seg_2022/hebi/shimo_project/gw1/debug_2bins'
+debug_2bins = '/data/home/jiachen/data/seg_data/hebi/shimo/Q1/roi_2bins'
+
 if not os.path.exists(debug_2bins):
     os.makedirs(debug_2bins)
 
@@ -34,8 +38,8 @@ for defect in def_list:
     test_all.extend(tmp[int(len(tmp)*0.7):])
 
 # 写入txt
-tr_txt = open('./roi_train.txt', 'w')
-te_txt = open('./roi_test.txt', 'w')
+tr_txt = open('./Q_train.txt', 'w')
+te_txt = open('./Q_test.txt', 'w')
 
 for tr in train_all:
     tr_txt.write(tr)
