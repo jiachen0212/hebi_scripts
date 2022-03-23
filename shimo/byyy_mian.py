@@ -3,10 +3,26 @@ import shutil
 from debug import help
 import random
 import cv2
+import json
 
 
 
-def roi_imgs(out_dir, base_dir):
+def json_label_check(js_path, label_list):
+    try:
+        data = json.load(open(js_path, 'r'))
+    except:
+        return 0
+
+    if len(data['shapes']) > 0:
+        for cls_ in data['shapes']:
+            if cls_['label'] in label_list:
+                return 1
+        return 0
+    else:
+        return 0
+
+
+def roi_imgs(out_dir, base_dir, roi):
     ims = [os.path.join(base_dir, a) for a in os.listdir(base_dir) if a.split('.')[-1] in ['png', 'bmp']]
     for im in ims:
         basename = os.path.basename(im)
@@ -24,12 +40,16 @@ def roi_imgs(out_dir, base_dir):
 
 
 
-base_dir ='/data/home/jiachen/data/seg_data/hebi/shimo/aotuyybyyy/0318'
-out_dir = '/data/home/jiachen/data/seg_data/hebi/shimo/aotuyybyyy/0318/roi_2bins'
+base_dir ='/data/home/jiachen/data/seg_data/hebi/shimo/aotuyybyyy/0320_bian_yayin'
+out_dir = '/data/home/jiachen/data/seg_data/hebi/shimo/aotuyybyyy/0320_bian_yayin/roi_2bins'
+
+tr_txt = './0320byyy_train.txt'
+te_txt = './0320byyy_test.txt'
+
 
 flag = 1
 
-# base_dir ='/Users/chenjia/Downloads/Learning/SmartMore/2022/DL/hebi_反面/gw1/3.18/1'
+# base_dir ='/Users/chenjia/Desktop/0320bian_yayintest'
 # out_dir = '/Users/chenjia/Desktop/test'
 
 
@@ -39,14 +59,15 @@ if not os.path.exists(out_dir):
 
 train_all = []
 test_all = []
-roi = (670,0,7594, 7269)  # 横,纵 起终点
+# roi = (670,0,7594, 7269)  # 横,纵 起终点
+# roi = (918,0,7594, 7594)
+roi = (960,0,7307, 7207) # 0320bian_yayin
 split_target = (1, 2)
-
 
 
 # only check img_roi
 if flag == 0:
-    roi_imgs(out_dir, base_dir)
+    roi_imgs(out_dir, base_dir, roi)
 
 
 if flag == 1:
@@ -66,26 +87,66 @@ if flag == 1:
     test_all.extend(tmp[int(len(tmp)*0.7):])
 
     # 写入新的txt
-    tr_txt = open('./0318_train.txt', 'w')
-    te_txt = open('./0318_test.txt', 'w')
+    tr_txts = open(tr_txt, 'w')
+    te_txts = open(te_txt, 'w')
 
     for tr in train_all:
-        tr_txt.write(tr)
+        tr_txts.write(tr)
 
     for te in test_all:
-        te_txt.write(te)
+        te_txts.write(te)
 
 
+
+if flag == 2:
     # 把新数据的train, test直接加到 all_test_4defects.txt all_train_4defects.txt 后面
     txt_root_dir = '/data/home/jiachen/project/seg_project/seg_2022/hebi/shimo_project/codes_for_cut_2bins/roi_debug'
-    tr_txt = open(os.path.join(txt_root_dir, 'all_train_4defects.txt'), 'a')
-    te_txt = open(os.path.join(txt_root_dir, 'all_test_4defects.txt'), 'a')
+    tr_txts = open(os.path.join(txt_root_dir, 'all_train_4defects.txt'), 'a')
+    te_txts = open(os.path.join(txt_root_dir, 'all_test_4defects.txt'), 'a')
+
+    train_all = open(tr_txt, 'r').readlines()
+    test_all = open(te_txt, 'r').readlines()
+    train_all = [a for a in train_all if len(a) > 1]
+    test_all = [a for a in test_all if len(a) > 1]
 
     for tr in train_all:
-        tr_txt.write(tr)
+        tr_txts.write(tr)
 
     for te in test_all:
-        te_txt.write(te)
+        te_txts.write(te)
+
+
+if flag == 3:
+    tr_txt = './till_0320_byyy_train.txt'
+    te_txt = './till_0320_byyy_test.txt'
+    all_jss = []
+    # merge bian_yayin txts
+    dir1 = out_dir
+    dir2 = '/data/home/jiachen/project/seg_project/seg_2022/hebi/shimo_project/byyy/3.17/roi_2bins'
+    data_list = []
+    data_list.append(dir1)
+    data_list.append(dir2)
+    for dir_ in data_list:
+        js_paths = [os.path.join(dir_, a) for a in os.listdir(dir_) if '.json' in a]
+        for js_path in js_paths:
+            im = os.path.basenmae(js_path).split('.')[0] + '.png'
+            line = '{}||{}\n'.format(os.path.join(dir_, im)[5:], js_path[5:])
+            print(line)
+            all_jss.append(line)
+
+
+    random.shuffle(all_jss)
+    tr_txts = open(tr_txt, 'w')
+    te_txts = open(te_txt, 'w')
+
+    # 所有数据加入训练..
+    for tr in all_jss:
+        tr_txts.write(tr)
+
+    for te in all_jss[:13]:
+        te_txts.write(te)
+
+
 
 
 

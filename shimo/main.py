@@ -9,7 +9,6 @@ import random
 base_dir = '/data/home/jiachen/data/seg_data/hebi/shimo/Q1'
 def_list = ['aokeng', 'tudian', 'yayin']
 
-# debug_2bins = '/data/home/jiachen/project/seg_project/seg_2022/hebi/shimo_project/gw1/debug_2bins'
 debug_2bins = '/data/home/jiachen/data/seg_data/hebi/shimo/Q1/roi_2bins'
 
 if not os.path.exists(debug_2bins):
@@ -17,7 +16,9 @@ if not os.path.exists(debug_2bins):
 
 train_all = []
 test_all = []
-roi = (918,0,7594, 7594)  # 横,纵 起终点.
+# roi = (918,0,7594, 7594)  # 横,纵 起终点.
+roi = (800,0,7594, 7269)
+
 split_target = (1, 2)
 for defect in def_list:
     tmp = []
