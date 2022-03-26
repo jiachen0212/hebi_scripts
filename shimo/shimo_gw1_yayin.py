@@ -60,7 +60,7 @@ def sdk_post(predict, Confidence=0.5, Threshold=[0, 0, 0, 0], Max_Threshold=None
     print(f'pixel_classes: {np.unique(map_)}')
     mask_map = np.max(predict[0, :, :, :], axis=0)
     mask_ = map_[0, :, :]
-    temo_predict = np.zeros(mask_.shape)
+    temo_predict = np.zeros(mask_.shape)  # 单通道
     score_print = np.zeros(mask_.shape)
     for i in range(num_class):
         if i == 0:
@@ -94,6 +94,9 @@ def sdk_post(predict, Confidence=0.5, Threshold=[0, 0, 0, 0], Max_Threshold=None
                         if number_thre > num_thres:
                             print("缺陷面积 > {}".format(num_thres))
                             points.append([candidates[i_], candidates[j_]])
+
+                            # 3通道才显示轮廓, cv2.drawContours此处失效.
+                            # cv2.drawContours(temo_predict, contours,-1,(0,0,255),3,lineType=cv2.LINE_AA)
 
                             # 得到缺陷的最小外接旋转矩形.
                             rect = cv2.minAreaRect(cnt)
