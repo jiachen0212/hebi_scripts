@@ -9,18 +9,25 @@ CONTACT:         yu.mo@smartmore.com
 
 Description:
 """
-import os.path
-import os
+
+
 import cv2
 import json
 import numpy as np
-# import tensorboard.plugins.projector.metadata
 
 np.set_printoptions(suppress=True)
 
 
 class LineCalliper(object):
     def __init__(self, **kwargs):
+
+        # start=(1500, 1200),
+        # end=(3500, 1200),
+        # num=101,
+        # axis=True,
+        # axis_half_length=100,
+        # axis_half_width=10
+
         self.start = kwargs.get("start", (0, 0))
         self.end = kwargs.get("end", (0, 0))
         self.x1, self.y1 = self.start
@@ -240,9 +247,11 @@ def train1(image: np.ndarray, conf: dict):
         mask_ps = np.array(mask_ps)
         mask_points.append(mask_ps)
 
+    # points学习到的是物料的四个角点, mask_points是conf中标记的点.
     return points, mask_points
 
-
+# train 和 inference 利用的则是: 不同图像中4个角点相对需mask点的位置都是一样的. 用反射矩阵求出四个角点的图像间的变换矩阵M,
+# 则可以将这个M带入运算得到新图像中的mask点的坐标.
 def inference1(image: np.ndarray, train_points: np.ndarray, train_mask_points: list):
     c1 = LineCalliper(
         start=(1700, 1200),
@@ -309,12 +318,16 @@ def inference1(image: np.ndarray, train_points: np.ndarray, train_mask_points: l
     p3 = intersect(line2, line3)
     p4 = intersect(line3, line4)
     points = np.array([p1, p2, p3, p4])
+    # 获得变换矩阵
+    # train_points是train_data的四个角点, points则是新图像中学习到的4个角点. 做一个放射变换.
     m = cv2.getPerspectiveTransform(train_points, points)
 
     inference_mask_points = []
+    # 注意这里使用的是: train_mask_points, 是train-data的conf-json我们mask好的点
     for ps in train_mask_points:
         inference_mask_ps = []
         for p in ps:
+            # new_point就是新图像中我们该mask的点的位置了.
             new_point = perspective_transform(p, m)
             inference_mask_ps.append(new_point)
         inference_mask_ps = np.array(inference_mask_ps)
@@ -323,58 +336,29 @@ def inference1(image: np.ndarray, train_points: np.ndarray, train_mask_points: l
     return points, inference_mask_points
 
 
-def main1(data_dir, config, ff):
-    # 工位1的定位标注
-    path = os.path.join(config, "1.png")
+def main1():
+    import glob
+    path = "/Users/moyu/Downloads/hebi_label/1.png"
     train_image = cv2.imread(path, 0)
-    conf_path = os.path.join(config, "1.json")
+    conf_path = "/Users/moyu/Downloads/hebi_label/1.json"
     with open(conf_path) as f:
         train_conf = json.load(f)
 
-    # 定位+mask工位1的图像
     points, mask_points = train1(image=train_image, conf=train_conf)
-    names = os.listdir(data_dir)
-    paths = [os.path.join(data_dir, a) for a in names if '.png' in a]
-    # paths = glob.glob(r"D:\work\project\DL\hebi\data\20220214\data\PSA\1cls\bianxing\1\*.png")
+    paths = glob.glob("/Users/moyu/Downloads/bianxing/1(1)/1/*.png")
     for cur_path in paths:
         print(cur_path)
-        pre, post = cur_path.split('PSA')[0], cur_path.split('PSA')[1]
-        save_path = "{}masked{}".format(pre, post)
+        image = cv2.imread(cur_path, 0)
         draw = cv2.imread(cur_path)
-
-        try:
-            image = cv2.imread(cur_path, 0)
-        except:
-            print("image fail: {}".format(cur_path))
-            continue
-        try:
-            inference_points, inference_mask_points = inference1(image, points, mask_points)
-        except:
-            print("mask fail: {}".format(cur_path))
-            ff.write(cur_path)
-            cv2.imwrite(save_path, image)
-            save_pre_dir = os.path.dirname(save_path)
-            if not os.path.exists(save_pre_dir):
-                os.makedirs(save_pre_dir)
-            continue
-        # 画出外框绿线
-        # cv2.drawContours(draw, [inference_points.astype(np.int32)], 0, [0, 255, 0], 2)
+        inference_points, inference_mask_points = inference1(image, points, mask_points)
+        cv2.drawContours(draw, [inference_points.astype(np.int32)], 0, [0, 255, 0], 2)
         for ps in inference_mask_points:
             ps = ps.astype(np.int32)
             cv2.drawContours(draw, [ps], 0, [0, 0, 0], -1)
 
-        # 可视化mask结果
-        # total_img = np.zeros((image.shape[0] // 8, image.shape[1] // 8, 3), np.uint8)
-        # total_img[:, :, :] = cv2.resize(draw, (draw.shape[1] // 8, draw.shape[0] // 8))
-        # cv2.imshow("draw1", total_img)
-        # cv2.waitKey(0)
-        # cv2.destroyAllWindows()
-
-        # save masked_image
-        save_pre_dir = os.path.dirname(save_path)
-        if not os.path.exists(save_pre_dir):
-            os.makedirs(save_pre_dir)
-        cv2.imwrite(save_path, draw)
+        cv2.imshow("draw1", draw)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
 
 def inference2(image: np.ndarray, train_points: np.ndarray, train_mask_points: list):
@@ -457,46 +441,29 @@ def inference2(image: np.ndarray, train_points: np.ndarray, train_mask_points: l
     return points, inference_mask_points
 
 
-def main2(data_dir, config, ff):
-    path = os.path.join(config, "1.png")
+def main2():
+    import glob
+    path = "/Users/moyu/Downloads/hebi_label/1.png"
     train_image = cv2.imread(path, 0)
-    conf_path = os.path.join(config, "1.json")
+    conf_path = "/Users/moyu/Downloads/hebi_label/1.json"
     with open(conf_path) as f:
         train_conf = json.load(f)
 
     points, mask_points = train1(image=train_image, conf=train_conf)
-    names = os.listdir(data_dir)
-    paths = [os.path.join(data_dir, a) for a in names if '.png' in a]
+    paths = glob.glob("/Users/moyu/Downloads/bianxing/2(1)/2/*.png")
     for cur_path in paths:
         print(cur_path)
-        pre, post = cur_path.split('PSA')[0], cur_path.split('PSA')[1]
-        save_path = "{}masked{}".format(pre, post)
+        image = cv2.imread(cur_path, 0)
         draw = cv2.imread(cur_path)
-        try:
-            image = cv2.imread(cur_path, 0)
-        except:
-            print("image fail: {}".format(cur_path))
-            continue
-        try:
-            inference_points, inference_mask_points = inference2(image, points, mask_points)
-        except:
-            print("mask fail: {}".format(cur_path))
-            ff.write(cur_path)
-            save_pre_dir = os.path.dirname(save_path)
-            if not os.path.exists(save_pre_dir):
-                os.makedirs(save_pre_dir)
-            cv2.imwrite(save_path, image)
-            continue
-
-        # cv2.drawContours(draw, [inference_points.astype(np.int32)], 0, [0, 255, 0], 2)
+        inference_points, inference_mask_points = inference2(image, points, mask_points)
+        cv2.drawContours(draw, [inference_points.astype(np.int32)], 0, [0, 255, 0], 2)
         for ps in inference_mask_points:
             ps = ps.astype(np.int32)
             cv2.drawContours(draw, [ps], 0, [0, 0, 0], -1)
-        # save masked_img
-        save_pre_dir = os.path.dirname(save_path)
-        if not os.path.exists(save_pre_dir):
-            os.makedirs(save_pre_dir)
-        cv2.imwrite(save_path, draw)
+
+        cv2.imshow("draw2", draw)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
 
 def train3(image: np.ndarray, conf: dict):
@@ -735,40 +702,24 @@ def inference32(image: np.ndarray, train_points: np.ndarray, train_mask_points: 
     return points, inference_mask_points
 
 
-def main3(data_dir, config, ff):
-    path = os.path.join(config, "2.png")
+def main3():
+    import glob
+    path = "/Users/moyu/Downloads/hebi_label/2.png"
     train_image = cv2.imread(path, 0)
-    conf_path = os.path.join(config, "2.json")
+    conf_path = "/Users/moyu/Downloads/hebi_label/2.json"
     with open(conf_path) as f:
         train_conf = json.load(f)
 
     points, mask_points = train3(image=train_image, conf=train_conf)
-    names = os.listdir(data_dir)
-    paths = [os.path.join(data_dir, a) for a in names if '.png' in a]
+    paths = glob.glob("/Users/moyu/Downloads/bianxing/3(1)/3/*.png")
     for cur_path in paths:
         print(cur_path)
-        pre, post = cur_path.split('PSA')[0], cur_path.split('PSA')[1]
-        save_path = "{}masked{}".format(pre, post)
+        image = cv2.imread(cur_path, 0)
         draw = cv2.imread(cur_path)
-        try:
-            image = cv2.imread(cur_path, 0)
-        except:
-            print("image fail: {}".format(cur_path))
-            continue
-        try:
-            inference_points1, inference_mask_points1 = inference31(image, points, mask_points)
-            inference_points2, inference_mask_points2 = inference32(image, points, mask_points)
-        except:
-            print("mask fail: {}".format(cur_path))
-            ff.write(cur_path)
-            save_pre_dir = os.path.dirname(save_path)
-            if not os.path.exists(save_pre_dir):
-                os.makedirs(save_pre_dir)
-            cv2.imwrite(save_path, image)
-            continue
-
-        # cv2.drawContours(draw, [inference_points1.astype(np.int32)], 0, [0, 255, 0], 2)
-        # cv2.drawContours(draw, [inference_points2.astype(np.int32)], 0, [0, 255, 0], 2)
+        inference_points1, inference_mask_points1 = inference31(image, points, mask_points)
+        inference_points2, inference_mask_points2 = inference32(image, points, mask_points)
+        cv2.drawContours(draw, [inference_points1.astype(np.int32)], 0, [0, 255, 0], 2)
+        cv2.drawContours(draw, [inference_points2.astype(np.int32)], 0, [0, 255, 0], 2)
         for ps in inference_mask_points1:
             ps = ps.astype(np.int32)
             cv2.drawContours(draw, [ps], 0, [0, 0, 0], -1)
@@ -777,11 +728,9 @@ def main3(data_dir, config, ff):
             ps = ps.astype(np.int32)
             cv2.drawContours(draw, [ps], 0, [0, 0, 0], -1)
 
-        # save masked_img
-        save_pre_dir = os.path.dirname(save_path)
-        if not os.path.exists(save_pre_dir):
-            os.makedirs(save_pre_dir)
-        cv2.imwrite(save_path, draw)
+        cv2.imshow("draw3", draw)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
 
 def train4(image: np.ndarray, conf: dict):
@@ -1020,39 +969,24 @@ def inference42(image: np.ndarray, train_points: np.ndarray, train_mask_points: 
     return points, inference_mask_points
 
 
-def main4(data_dir, config, ff):
-    path = os.path.join(config, "3.png")
+def main4():
+    import glob
+    path = "/Users/moyu/Downloads/hebi_label/3.png"
     train_image = cv2.imread(path, 0)
-    conf_path = os.path.join(config, "3.json")
+    conf_path = "/Users/moyu/Downloads/hebi_label/3.json"
     with open(conf_path) as f:
         train_conf = json.load(f)
 
     points, mask_points = train4(image=train_image, conf=train_conf)
-    names = os.listdir(data_dir)
-    paths = [os.path.join(data_dir, a) for a in names if '.png' in a]
+    paths = glob.glob("/Users/moyu/Downloads/bianxing/4(1)/4/*.png")
     for cur_path in paths:
         print(cur_path)
-        pre, post = cur_path.split('PSA')[0], cur_path.split('PSA')[1]
-        save_path = "{}masked{}".format(pre, post)
+        image = cv2.imread(cur_path, 0)
         draw = cv2.imread(cur_path)
-        try:
-            image = cv2.imread(cur_path, 0)
-        except:
-            print("image fail: {}".format(cur_path))
-            continue
-        try:
-            inference_points1, inference_mask_points1 = inference41(image, points, mask_points)
-            inference_points2, inference_mask_points2 = inference42(image, points, mask_points)
-        except:
-            print("mask fail: {}".format(cur_path))
-            ff.write(cur_path)
-            save_pre_dir = os.path.dirname(save_path)
-            if not os.path.exists(save_pre_dir):
-                os.makedirs(save_pre_dir)
-            cv2.imwrite(save_path, image)
-            continue
-        # cv2.drawContours(draw, [inference_points1.astype(np.int32)], 0, [0, 255, 0], 2)
-        # cv2.drawContours(draw, [inference_points2.astype(np.int32)], 0, [0, 255, 0], 2)
+        inference_points1, inference_mask_points1 = inference41(image, points, mask_points)
+        inference_points2, inference_mask_points2 = inference42(image, points, mask_points)
+        cv2.drawContours(draw, [inference_points1.astype(np.int32)], 0, [0, 255, 0], 2)
+        cv2.drawContours(draw, [inference_points2.astype(np.int32)], 0, [0, 255, 0], 2)
         for ps in inference_mask_points1:
             ps = ps.astype(np.int32)
             cv2.drawContours(draw, [ps], 0, [0, 0, 0], -1)
@@ -1061,60 +995,10 @@ def main4(data_dir, config, ff):
             ps = ps.astype(np.int32)
             cv2.drawContours(draw, [ps], 0, [0, 0, 0], -1)
 
-        # save masked_img
-        save_pre_dir = os.path.dirname(save_path)
-        if not os.path.exists(save_pre_dir):
-            os.makedirs(save_pre_dir)
-        cv2.imwrite(save_path, draw)
+        cv2.imshow("draw4", draw)
+        cv2.waitKey(0)
+        cv2.destroyAllWindows()
 
 
 if __name__ == '__main__':
-
-    datas = ['0214']
-    config_dir = '/data/home/jiachen/data/seg_data/hebi/20220214/imgs/hebi_label'
-
-    for data in datas:
-        base_dir = '/data/home/jiachen/data/seg_data/hebi/2022{}/imgs'.format(data)
-        config_dir = '/data/home/jiachen/data/seg_data/hebi/20220214/imgs/hebi_label'
-        # base_dir = r'D:\work\project\DL\hebi\data\20220214\data'
-        # config_dir = r'C:\Users\15974\Desktop\hebi_label'
-
-        defects = {'PSA': ['2cls', '1cls', '3cls']}
-        cls_dirs = defects['PSA']
-        gongwei_paths = dict()
-        for cls in cls_dirs:
-            gongwei_paths[cls] = []
-        for defect in defects:
-            for cls in defects[defect]:
-                path1 = os.path.join(base_dir, defect, cls)
-                for sub in os.listdir(path1):
-                    path2 = os.path.join(path1, sub)
-                    for dir_ in os.listdir(path2):
-                        path3 = os.path.join(path2, dir_)
-                        if os.path.basename(path3) in ['1', '2']:
-                            gongwei_paths['1cls'].append(path3)
-                        elif os.path.basename(path3) == '3':
-                            gongwei_paths['2cls'].append(path3)
-                        else:
-                            gongwei_paths['3cls'].append(path3)
-
-        ff1 = open('./cls1.txt', 'w')
-        ff2 = open('./cls2.txt', 'w')
-        ff3 = open('./cls3.txt', 'w')
-        ff4 = open('./cls4.txt', 'w')
-        for k, v in gongwei_paths.items():
-            if k == '1cls':
-                config = os.path.join(config_dir, '1')
-                for dir_ in v:
-                    if os.path.basename(dir_) == '2':
-                        main2(dir_, config, ff2)
-                    else:
-                        main1(dir_, config, ff1)
-            elif k == '2cls':
-                config = os.path.join(config_dir, '2')
-                for dir_ in v:
-                    main3(dir_, config, ff3)
-            else:
-                config = os.path.join(config_dir, '3')
-                for dir_ in v:
-                    main4(dir_, config, ff4)
+    main4()
