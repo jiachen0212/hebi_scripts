@@ -4,10 +4,10 @@ import json
 import os
 import os.path as osp
 import warnings
-
+import numpy as np 
 import PIL.Image
 import yaml
-
+# pip install labelme==3.16.5
 from labelme import utils
 
 
@@ -55,10 +55,19 @@ def main(json_file, labelme_vis_dir):
         captions = ['{}: {}'.format(lv, ln)
                     for ln, lv in label_name_to_value.items()]
         lbl_viz = utils.draw_label(lbl, img, captions)
-
+        h,w = lbl_viz.shape[0], lbl_viz.shape[1]
+        img_ = np.stack((img,)*3, axis=-1)
+        # lbl_viz.astype('uint8')
+        # img_.astype('uint8')
+        # merge一下原图和标注mask图, 可更直观的对比查看标注质量.
+        merge_img = np.zeros((h, 2*w, 3))
+        merge_img[:, :w] = img_
+        merge_img[:, w:] = lbl_viz
+        merge_img = np.uint8(merge_img)
         PIL.Image.fromarray(img).save(osp.join(out_dir, 'img.png'))
-        # utils.lblsave(osp.join('G:/cashgt/', path[0:len(path) - 4] + 'png'), lbl)
         PIL.Image.fromarray(lbl_viz).save(osp.join(out_dir, 'label_viz.png'))
+        PIL.Image.fromarray(merge_img).save(osp.join(out_dir, 'merge.png'))
+
 
         with open(osp.join(out_dir, 'label_names.txt'), 'w') as f:
             for lbl_name in label_names:
@@ -74,8 +83,11 @@ def main(json_file, labelme_vis_dir):
 
 if __name__ == '__main__':
 
-    json_file = '/Users/chenjia/Desktop/2'
-    labelme_vis_dir = '/Users/chenjia/Desktop/1'
+    # json和原图
+    json_file = r'C:\Users\15974\Desktop\1'
+
+    # 可视化结果放在这里
+    labelme_vis_dir = r'C:\Users\15974\Desktop\2'
     if not os.path.exists(labelme_vis_dir):
         os.makedirs(labelme_vis_dir)
     main(json_file, labelme_vis_dir)
